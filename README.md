@@ -19,7 +19,7 @@ The script also handles integrety checks for the following:
   * Checks that the objects conform to PAN standards for input to fields within the address object
   
 ## How to Use
-#### Terminal Input (copy/paste)
+#### Terminal Input
 Enter objects in the following format for any combination of IP/Netmask, FQDN, or IP Range: 'name:address'
 
 For Example -- mailServer:10.42.42.42 or ldapServer:10.42.42.5/32 or dmzNet:10.42.42.0/24
