@@ -30,3 +30,6 @@ Objects should be separated by commas when entered into the terminal
 #### CSV File Input
 You can pass a CSV file as command argument, which would contain the name and address in the
 left and right columns respectively. There is no need to use the colon-separated format when using this option.
+
+## TODO
+Add support for IP/wildcard-mask address objects, which were introduced in PANOS 9.0
