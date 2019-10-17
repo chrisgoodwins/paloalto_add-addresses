@@ -245,7 +245,7 @@ def csvToList(variables_file):
     file = open(variables_file, 'rb')
     file_list = []
     for line in file:
-        line = re.sub('\r\n$', '', line)    ## Removes whitespace at the end of the line ##
+        line = re.sub('[\r\n]$', '', line)    ## Removes whitespace at the end of the line ##
         if line[0] == ',':
             line = re.sub(',', '', line)    ## Removes the comma at the beginning of the line when there is no name entry ##
         else:
