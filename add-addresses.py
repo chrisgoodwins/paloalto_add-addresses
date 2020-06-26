@@ -23,7 +23,6 @@
 ###############################################################################
 ###############################################################################
 
-
 import sys
 import getpass
 import re
@@ -45,8 +44,7 @@ addrObj_ip, addrObj_fqdn, addrObj_range, allObjNames, addrGroupName = [], [], []
 # Prompts the user to enter an address, then checks it's validity
 def getfwipfqdn():
     while True:
-        print('\n\n')
-        fwipraw = input("Please enter Panorama/firewall IP or FQDN: ")
+        fwipraw = input("\nPlease enter Panorama/firewall IP or FQDN: ")
         ipr = re.match(r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", fwipraw)
         fqdnr = re.match(r"(?=^.{4,253}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)", fwipraw)
         if ipr:
@@ -75,9 +73,8 @@ def getCreds():
 def getkey(fwip):
     while True:
         try:
-            fwipgetkey = fwip
             username, password = getCreds()
-            keycall = "https://%s/api/?type=keygen&user=%s&password=%s" % (fwipgetkey, username, password)
+            keycall = f"https://{fwip}/api/?type=keygen&user={username}&password={password}"
             r = requests.get(keycall, verify=False)
             tree = ET.fromstring(r.text)
             if tree.get('status') == "success":
@@ -96,20 +93,21 @@ def csvToList(variables_file):
     file = open(variables_file, 'r')
     file_list = []
     for line in file:
-        line = re.sub('[\r\n]$', '', line)  # Removes whitespace at the end of the line
-        if line[0] == ',':
-            line = re.sub(',', '', line)    # Removes the comma at the beginning of the line when there is no name entry
-        else:
-            line = re.sub(',', ':', line)   # Replaces the comma with a colon when there is a name entry present
-        file_list.append(line)
+        if line != ',\n' and line != '\n':
+            line = re.sub(r',?[\r\n]$', '', line)  # Removes comma and/or whitespace at the end of the line
+            if line[0] == ',':
+                line = re.sub(',', '', line)    # Removes the comma at the beginning of the line when there is no name entry
+            else:
+                line = re.sub(',', ':', line)   # Replaces the comma with a colon when there is a name entry present
+            file_list.append(line)
     return file_list
 
 
 # Parses address list, checks address validity, and separates object types
 def parse_addrList(addrList, argv):
-    addrObjCheck_ip = '^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)((\/)(3[0-2]|2[0-9]|1[0-9]|[1-9]))?)$'
-    addrObjCheck_fqdn = '^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$'
-    addrObjCheck_range = '^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?(?:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))-(?:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$'
+    addrObjCheck_ip = r'^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)((\/)(3[0-2]|2[0-9]|1[0-9]|[1-9]))?)$'
+    addrObjCheck_fqdn = r'^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$'
+    addrObjCheck_range = r'^(?:(?:([A-Za-z\d])|(([A-Za-z\d])([\w \.-]){0,61}([\w\.-]))):\s*)?(?:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))-(?:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$'
 
     addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw, addrObject_errors = [], [], [], []
     for addr in addrList:
@@ -125,10 +123,10 @@ def parse_addrList(addrList, argv):
         else:
             addrObject_errors.append(addr)
     if addrObject_errors != []:
-        time.sleep(1)
+        time.sleep(.75)
         print('\n')
         for item in addrObject_errors:
-            print('There was something wrong with your entry -- %s' % (item))
+            print(f'There was something wrong with your entry -- {item}')
         print('\n\nPalo Alto Networks Naming Convention:\nThe name cannot contain more than 63 characters, and it must start with an alphanumeric character,\nwhile the remainder can contain underscores, hypens, periods, or spaces. Also, the last character cannot be a space.\n\n\nPlease fix the issue, then try again...\n\n')
         if len(argv) > 1:
             exit()
@@ -152,14 +150,11 @@ def user_input(argv):
                 if seeList.lower() == 'y':
                     print('')
                     [print(addr) for addr in addrList]
-                    time.sleep(1)
                     break
                 elif seeList.lower() == 'n' or seeList == '':
-                    time.sleep(1)
-                    print("\n\nFair enough, let's get to it...")
                     break
                 else:
-                    time.sleep(1)
+                    time.sleep(.75)
                     print("\n\nThat wasn't an option, please try again with a 'y' or 'n'...")
         rawObjs = parse_addrList(addrList, argv)
         if rawObjs is not False:
@@ -179,10 +174,10 @@ def checkListDups():
             name_dup_dict[key] = allObjNames_dup_indices[key]
             name_dupBool = True
     if name_dupBool is True:
-        time.sleep(1)
+        time.sleep(.75)
         print("\nThere are duplicates in the list you provided...\n")
         for key in name_dup_dict:
-            print(key + ' -- used ' + str(len(name_dup_dict[key])) + ' times')
+            print(f'{key} -- used {str(len(name_dup_dict[key]))} times')
         print('\n\nPlease fix the duplicate object issue, the re-run the script\n\n\n')
         exit()
 
@@ -195,15 +190,15 @@ def addrObjBuilder(addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw):
             addrObj_ip.append(obj.split(':'))  # If the ip object has a name, then split it off
         else:
             if '/' not in obj or '/32' in obj:
-                ip_pattern = re.compile('^((\d{1,3}\.){3}\d{1,3})')
+                ip_pattern = re.compile(r'^((\d{1,3}\.){3}\d{1,3})')
                 ip = ip_pattern.findall(obj)
-                addrObj_ip.append([('H-' + ip[0][0]), obj])  # If the ip object has no mask or /32 mask, then make name the same as the address, with a 'H-' prefix
+                addrObj_ip.append([(f'H-{ip[0][0]}'), obj])  # If the ip object has no mask or /32 mask, then make name the same as the address, with a 'H-' prefix
             else:
-                mask_pattern = re.compile('\d?\d$')
-                ip_pattern = re.compile('^((\d{1,3}\.){3}\d{1,3})')
+                mask_pattern = re.compile(r'\d?\d$')
+                ip_pattern = re.compile(r'^((\d{1,3}\.){3}\d{1,3})')
                 mask = mask_pattern.findall(obj)
                 ip = ip_pattern.findall(obj)
-                addrObj_ip.append([('N-' + ip[0][0] + '-' + mask[0]), obj])  # Create the name of the ip object with the 'N-' prefix, address, and -<mask> suffix
+                addrObj_ip.append([(f'N-{ip[0][0]}-{mask[0]}'), obj])  # Create the name of the ip object with the 'N-' prefix, address, and -<mask> suffix
     for obj in addrObj_fqdn_raw:
         if ':' in obj:
             addrObj_fqdn.append(obj.split(':'))
@@ -213,12 +208,12 @@ def addrObjBuilder(addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw):
         if ':' in obj:
             addrObj_range.append(obj.split(':'))
         else:
-            addrObj_range.append(['range_' + obj, obj])  # If no name is given for the range object, then the name will be the same as the address
+            addrObj_range.append([f'range_{obj}', obj])  # If no name is given for the range object, then the name will be the same as the address
 
 
 # Determine whether the device is Panorama or firewall
 def getDevType(fwip, mainkey):
-    devURL = "https://%s/api/?type=config&action=get&xpath=/config/devices/entry/device-group&key=%s" % (fwip, mainkey)
+    devURL = f"https://{fwip}/api/?type=config&action=get&xpath=/config/devices/entry/device-group&key={mainkey}"
     r = requests.get(devURL, verify=False)
     devTree = ET.fromstring(r.text)
     if devTree.find('./result/device-group/entry') is None:
@@ -232,36 +227,35 @@ def getDevType(fwip, mainkey):
 
 # Presents the user with a choice of device-groups
 def getDG(fwip, mainkey):
-    dgXmlUrl = "https://%s/api/?type=config&action=get&xpath=/config/devices/entry/device-group&key=%s" % (fwip, mainkey)
+    dgXmlUrl = f"https://{fwip}/api/?type=config&action=get&xpath=/config/devices/entry/device-group&key={mainkey}"
     r = requests.get(dgXmlUrl, verify=False)
     dgfwTree = ET.fromstring(r.text)
     dgList = []
     for entry in dgfwTree.findall('./result/device-group/entry'):
         dgList.append(entry.get('name'))
+    dgList.append('Shared')
     while True:
         try:
-            print('\n\nHere\'s a list of device groups found in Panorama...\n')
-            i = 1
-            for dgName in dgList:
-                print('%s) %s' % (i, dgName))
-                i += 1
-            dgChoice = int(input('\nChoose a number for the device-group:\n\nAnswer is: '))
+            print("\n\nHere's a list of device groups found in Panorama...\n")
+            for index, dgName in enumerate(dgList):
+                print(f'{index + 1}) {dgName}')
+            dgChoice = int(input('\nChoose a number for the device-group:\n\nAnswer: '))
             reportDG = dgList[dgChoice - 1]
             break
         except:
             print("\n\nThat's not a number in the list, try again...\n")
-            time.sleep(1)
+            time.sleep(.75)
     return reportDG
 
 
 # Checks for parent device groups, and returns a list of them
 def getParentDGs(fwip, mainkey, panoDG):
     pDGs = []
-    dgHierarchyURL = 'https://' + fwip + '/api/?type=op&cmd=<show><dg-hierarchy></dg-hierarchy></show>&key=' + mainkey
+    dgHierarchyURL = f'https://{fwip}/api/?type=op&cmd=<show><dg-hierarchy></dg-hierarchy></show>&key={mainkey}'
     r = requests.get(dgHierarchyURL, verify=False)
     dgHierarychyTree = ET.fromstring(r.text)
     while True:
-        dg = dgHierarychyTree.find(".//*/[@name='%s']..." % (panoDG))
+        dg = dgHierarychyTree.find(f".//*/[@name='{panoDG}']...")
         if dg.get('name') is None:
             break
         else:
@@ -270,24 +264,46 @@ def getParentDGs(fwip, mainkey, panoDG):
     return pDGs
 
 
+# Check for multi-vsys, if so, prompt user to choose vsys number or shared context
+def check_vsys(fwip, mainkey):
+    multi_vsys_check = f'https://{fwip}/api/?type=op&cmd=<show><system><setting><multi-vsys></multi-vsys></setting></system></show>&key={mainkey}'
+    r = requests.get(multi_vsys_check, verify=False)
+    tree = ET.fromstring(r.text)
+    if tree.find('./result').text == 'off':
+        return 'vsys1'
+    else:
+        print('\n\nLooks like your firewall is running in multi-vsys mode...')
+        while True:
+            vsys = input('\nEnter the vsys number, or hit leave blank for the shared context: ')
+            if vsys == '':
+                return 'shared'
+            try:
+                return f'vsys{str(int(vsys))}'
+            except ValueError:
+                print("\nThat wasn't a number, try again...\n")
+
+
 # Checks Panorama device group or firewall for address duplicates
-def checkPanDups(fwip, mainkey, panoDG):
+def checkPanDups(fwip, mainkey, panoDG, fw_vsys):
     global addrObj_ip, addrObj_fqdn, addrObj_range
     if panoDG is not None:
-        parentDGs = getParentDGs(fwip, mainkey, panoDG)
-        allDGs = [panoDG] + parentDGs
-        sharedAddrObjURL = 'https://' + fwip + "/api/?type=config&action=get&xpath=/config/shared/address&key=" + mainkey
+        sharedAddrObjURL = f'https://{fwip}/api/?type=config&action=get&xpath=/config/shared/address&key={mainkey}'
         r = requests.get(sharedAddrObjURL, verify=False)
         tree = ET.fromstring(r.text)
         addrObjs = [entry.get('name') for entry in tree.findall('./result/address/entry')]  # Add all addresses from the shared context to the address list ##
-        for dg in allDGs:
-            addrObjURL = 'https://' + fwip + "/api/?type=config&action=get&xpath=/config/devices/entry/device-group/entry[@name='" + dg + "']/address&key=" + mainkey
-            r = requests.get(addrObjURL, verify=False)
-            tree = ET.fromstring(r.text)
-            for entry in tree.findall('./result/address/entry'):
-                addrObjs.append(entry.get('name'))  # Add all addresses from the from all parent device groups to the address list ##
+        if panoDG != 'Shared':
+            allDGs = [panoDG] + getParentDGs(fwip, mainkey, panoDG)
+            for dg in allDGs:
+                addrObjURL = f"https://{fwip}/api/?type=config&action=get&xpath=/config/devices/entry/device-group/entry[@name='{dg}']/address&key={mainkey}"
+                r = requests.get(addrObjURL, verify=False)
+                tree = ET.fromstring(r.text)
+                for entry in tree.findall('./result/address/entry'):
+                    addrObjs.append(entry.get('name'))  # Add all addresses from the from all parent device groups to the address list ##
     else:
-        fwAddrObjURL = 'https://' + fwip + "/api/?type=config&action=get&xpath=/config/devices/entry/vsys/entry/address&key=" + mainkey
+        if fw_vsys == 'shared':
+            fwAddrObjURL = f'https://{fwip}/api/?type=config&action=get&xpath=/config/shared/address/address&key={mainkey}'
+        else:
+            fwAddrObjURL = f"https://{fwip}/api/?type=config&action=get&xpath=/config/devices/entry/vsys/entry[@name='{fw_vsys}']/address&key={mainkey}"
         r = requests.get(fwAddrObjURL, verify=False)
         tree = ET.fromstring(r.text)
         addrObjs = [entry.get('name') for entry in tree.findall('./result/address/entry')]  # Add all addresses from the firewall to the address list ##
@@ -299,10 +315,10 @@ def checkPanDups(fwip, mainkey, panoDG):
                 duplicateBool = True
                 duplicateList.append(obj)
     if duplicateBool is True:
-        print('\n\nDuplicates were found: ' + str(len(duplicateList)) + ' of your address objects that you provided already exists on the PAN device...\n')
+        print(f'\n\nDuplicates were found: {str(len(duplicateList))} of your address objects that you provided already exists on the PAN device...\n')
         print(*duplicateList, sep='\n')
         print('\n\nPlease make note of these addresses, as you will need to make adjustments to the names for these entries,\nthen manually enter them, or re-run this script. These duplicate entries will automatically be removed in order to proceed.\n\n')
-        time.sleep(1)
+        time.sleep(.75)
         for dupObj in duplicateList:
             [addrObj_ip.remove(addrObj) for addrObj in addrObj_ip if dupObj in addrObj]
             [addrObj_fqdn.remove(addrObj) for addrObj in addrObj_fqdn if dupObj in addrObj]
@@ -323,14 +339,14 @@ def addGroupOption():
                     run = False
                     break
                 else:
-                    time.sleep(1)
+                    time.sleep(.75)
                     print("\n\nYour address group name does not comply with Palo Alto Networks name convention format\n\nThe name cannot contain more than 63 characters, and it must start with an alphanumeric character,\nwhile the remainder can contain underscores, hypens, periods, or spaces.\nAlso, the last character cannot be a space.\n\nPlease try again...\n")
         elif addrGroup_answer.lower() == 'n':
             print('\nOk, the address objects will be added without a group')
-            time.sleep(1)
+            time.sleep(.75)
             break
         else:
-            time.sleep(1)
+            time.sleep(.75)
             print("\n\nThat wasn't an option, please try again with a 'y' or 'n'...")
 
 
@@ -338,14 +354,14 @@ def addGroupOption():
 # and checks the length of the requests API call to make sure it doesn't go over the 6K character limit, splitting if needed
 def addrGroupBuilder(apiCall_piece):
     elements_list = []
-    elements_all = "<entry name='%s'><static>" % (addrGroupName)
+    elements_all = f"<entry name='{addrGroupName}'><static>"
     for name in allObjNames:
-        if len(elements_all) + len(apiCall_piece) + 23 + len('<member>%s</member>' % (name)) <= 6000:  # 23 is '</static></entry>' + '-group' in the URL
-            elements_all += '<member>%s</member>' % (name)
+        if len(elements_all) + len(apiCall_piece) + 23 + len(f'<member>{name}</member>') <= 5000:  # 23 is '</static></entry>' + '-group' in the URL
+            elements_all += f'<member>{name}</member>'
         else:
             elements_all += '</static></entry>'
             elements_list.append(elements_all)
-            elements_all = "<entry name='%s'><static><member>%s</member>" % (addrGroupName, name)
+            elements_all = f"<entry name='{addrGroupName}'><static><member>{name}</member>"
     elements_all += '</static></entry>'
     elements_list.append(elements_all)
     return elements_list
@@ -357,108 +373,144 @@ def elementBuilder(apiCall_piece):
     elements_list = []
     elements_all = ''
     for obj_ip in addrObj_ip:
-        if len(elements_all) + len(apiCall_piece) + len("<entry name='%s'><ip-netmask>%s</ip-netmask></entry>" % (obj_ip[0], obj_ip[1])) <= 6000:
-            elements_all += "<entry name='%s'><ip-netmask>%s</ip-netmask></entry>" % (obj_ip[0], obj_ip[1])
+        if len(elements_all) + len(apiCall_piece) + len(f"<entry name='{obj_ip[0]}'><ip-netmask>{obj_ip[1]}</ip-netmask></entry>") <= 5000:
+            elements_all += f"<entry name='{obj_ip[0]}'><ip-netmask>{obj_ip[1]}</ip-netmask></entry>"
         else:
             elements_list.append(elements_all)
-            elements_all = "<entry name='%s'><ip-netmask>%s</ip-netmask></entry>" % (obj_ip[0], obj_ip[1])
+            elements_all = f"<entry name='{obj_ip[0]}'><ip-netmask>{obj_ip[1]}</ip-netmask></entry>"
     for obj_fqdn in addrObj_fqdn:
-        if len(elements_all) + len(apiCall_piece) + len("<entry name='%s'><fqdn>%s</fqdn></entry>" % (obj_fqdn[0], obj_fqdn[1])) <= 6000:
-            elements_all += "<entry name='%s'><fqdn>%s</fqdn></entry>" % (obj_fqdn[0], obj_fqdn[1])
+        if len(elements_all) + len(apiCall_piece) + len(f"<entry name='{obj_fqdn[0]}'><fqdn>{obj_fqdn[1]}</fqdn></entry>") <= 5000:
+            elements_all += f"<entry name='{obj_fqdn[0]}'><fqdn>{obj_fqdn[1]}</fqdn></entry>"
         else:
             elements_list.append(elements_all)
-            elements_all = "<entry name='%s'><fqdn>%s</fqdn></entry>" % (obj_fqdn[0], obj_fqdn[1])
+            elements_all = f"<entry name='{obj_fqdn[0]}'><fqdn>{obj_fqdn[1]}</fqdn></entry>"
     for obj_range in addrObj_range:
-        if len(elements_all) + len(apiCall_piece) + len("<entry name='%s'><ip-range>%s</ip-range></entry>" % (obj_range[0], obj_range[1])) <= 6000:
-            elements_all += "<entry name='%s'><ip-range>%s</ip-range></entry>" % (obj_range[0], obj_range[1])
+        if len(elements_all) + len(apiCall_piece) + len(f"<entry name='{obj_range[0]}'><ip-range>{obj_range[1]}</ip-range></entry>") <= 5000:
+            elements_all += f"<entry name='{obj_range[0]}'><ip-range>{obj_range[1]}</ip-range></entry>"
         else:
             elements_list.append(elements_all)
-            elements_all = "<entry name='%s'><ip-range>%s</ip-range></entry>" % (obj_range[0], obj_range[1])
+            elements_all = f"<entry name='{obj_range[0]}'><ip-range>{obj_range[1]}</ip-range></entry>"
     elements_list.append(elements_all)
     return elements_list
 
 
 # Pushes API calls for address object and group creation
-def apiPush(fwip, mainkey, devType, panoDG):
-    time.sleep(1)
+def apiPush(fwip, mainkey, devType, panoDG, fw_vsys):
     print('\n\nTime to push the address objects...')
-    time.sleep(1)
+    time.sleep(.75)
     if devType == 'pano':
         input('\nPress Enter to push API calls to Panorama (or CTRL+C to kill the script)... ')
-        apiCall_piece = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='" + panoDG + "']/address&element=" + '&key=' + mainkey
+        if panoDG == 'Shared':
+            apiCall_piece = f"https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address&element=&key={mainkey}"
+            addrApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address&element="
+            addrGroupApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address-group&element="
+        else:
+            apiCall_piece = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='{panoDG}']/address&element=&key={mainkey}"
+            addrApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='{panoDG}']/address&element="
+            addrGroupApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='{panoDG}']/address-group&element="
         addrObjElements_list = elementBuilder(apiCall_piece)
         if addrGroupName:
             addrGroupElements_list = addrGroupBuilder(apiCall_piece)
-        addrApiCall_part = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='" + panoDG + "']/address&element="
-        addrGroupApiCall_part = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/device-group/entry[@name='" + panoDG + "']/address-group&element="
     else:
         input('\nPress Enter to push API calls to the firewall (or CTRL+C to kill the script)... ')
-        apiCall_piece = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry/address&element=" + '&key=' + mainkey
+        if fw_vsys == 'shared':
+            apiCall_piece = f'https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address&element=&key={mainkey}'
+            addrApiCall_part = f'https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address&element='
+            addrGroupApiCall_part = f'https://{fwip}/api/?type=config&action=set&xpath=/config/shared/address-group&element='
+        else:
+            apiCall_piece = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry[@name='{fw_vsys}']/address&element=&key={mainkey}"
+            addrApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry[@name='{fw_vsys}']/address&element="
+            addrGroupApiCall_part = f"https://{fwip}/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry[@name='{fw_vsys}']/address-group&element="
         addrObjElements_list = elementBuilder(apiCall_piece)
         if addrGroupName:
             addrGroupElements_list = addrGroupBuilder(apiCall_piece)
-        addrApiCall_part = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry/address&element="
-        addrGroupApiCall_part = 'https://' + fwip + "/api/?type=config&action=set&xpath=/config/devices/entry/vsys/entry/address-group&element="
     for addrObjElements in addrObjElements_list:
-        addrApiCall = addrApiCall_part + addrObjElements + '&key=' + mainkey
+        addrApiCall = f'{addrApiCall_part}{addrObjElements}&key={mainkey}'
         r = requests.get(addrApiCall, verify=False)
         tree = ET.fromstring(r.text)
         if tree.get('status') != 'success':
-            time.sleep(1)
-            print('\n\nSorry, something went wrong while attempting create your address objects. Below is the faulty API call...\n\n' + addrApiCall + '\n\n\nTry and fix the issue and give it another shot!\n\nBye for now!\n\n\n')
+            time.sleep(.75)
+            print(f'\n\nSorry, something went wrong while attempting create your address objects. Below is the faulty API call...\n\n{addrApiCall}\n\n\nTry and fix the issue and give it another shot!\n\nBye for now!\n\n\n')
             exit()
     if addrGroupName:
-        time.sleep(1)
-        print("\n\n\nCongrats! All your address objects were successfully created\n\n\n\nNow it's time to add the address objects to the %s address group..." % (addrGroupName))
-        time.sleep(1)
+        time.sleep(.5)
+        print(f"\n\n\nCongrats! All your address objects were successfully created\n\n\n\nNow it's time to add the address objects to the {addrGroupName} address group...")
+        time.sleep(.5)
         input('\nPress Enter to push API calls to Panorama/firewall (or CTRL+C to kill the script)... ')
         for addrGroupElements in addrGroupElements_list:
-            addrGroupApiCall = addrGroupApiCall_part + addrGroupElements + '&key=' + mainkey
+            addrGroupApiCall = f'{addrGroupApiCall_part}{addrGroupElements}&key={mainkey}'
             r = requests.get(addrGroupApiCall, verify=False)
             tree = ET.fromstring(r.text)
             if tree.get('status') != 'success':
-                time.sleep(1)
-                print('\n\nSorry, something went wrong while attempting to add your address objects to the address group. Below is the faulty API call...\n\n' + addrGroupApiCall + '\n\n\nTry and fix the issue and give it another shot!\n\nBye for now!\n\n\n')
+                time.sleep(.75)
+                print(f'\n\nSorry, something went wrong while attempting to add your address objects to the address group. Below is the faulty API call...\n\n{addrGroupApiCall}\n\n\nTry and fix the issue and give it another shot!\n\nBye for now!\n\n\n')
                 exit()
             elif addrGroupElements == addrGroupElements_list[-1]:
-                time.sleep(1)
-                print('\n\n\nCongrats! You successfully added all of your address objects to the %s address group\n\n\nHave a fantastic day!!!\n\n\n' % (addrGroupName))
-                exit()
+                time.sleep(.5)
+                print(f'\n\n\nCongrats! You successfully added all of your address objects to the {addrGroupName} address group')
     else:
-        print('\n\n\nCongrats! You successfully created all of your address objects\n\n\nHave a fantastic day!!!\n\n\n')
-        exit()
+        print('\n\n\nCongrats! You successfully created all of your address objects')
 
 
 def main():
-    # If no argument is passed with the command, then the user will be prompted to enter a list of objects
-    addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw = user_input(sys.argv)
+    global addrObj_ip, addrObj_fqdn, addrObj_range, allObjNames, addrGroupName
+    authenticated = False
+    while True:
 
-    # Calls the functions to build the 3 lists with name and address for each element in each list
-    addrObjBuilder(addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw)
+        # If no argument is passed with the command, then the user will be prompted to enter a list of objects
+        addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw = user_input(sys.argv)
 
-    # Search the user provided list for duplicates
-    checkListDups()
+        # Calls the functions to build the 3 lists with name and address for each element in each list
+        addrObjBuilder(addrObj_ip_raw, addrObj_fqdn_raw, addrObj_range_raw)
 
-    # Calls the functions to prompt user for Panorama/FW address, and retrieve the API key
-    fwip = getfwipfqdn()
-    mainkey = getkey(fwip)
+        # Search the user provided list for duplicates
+        checkListDups()
 
-    # Determine whether the device is Panorama or firewall
-    devType = getDevType(fwip, mainkey)
+        # Calls the functions to prompt user for Panorama/FW address, and retrieve the API key
+        if not authenticated:
+            fwip = getfwipfqdn()
+            mainkey = getkey(fwip)
+            authenticated = True
 
-    # If Panorama is the device type, prompt user to choose device group
-    panoDG = None
-    if devType == 'pano':
-        panoDG = getDG(fwip, mainkey)
+        # Determine whether the device is Panorama or firewall
+        devType = getDevType(fwip, mainkey)
 
-    # Check for duplicates between list provided and pano/fw, and remove from list if they exist
-    checkPanDups(fwip, mainkey, panoDG)
+        # If Panorama is the device type, prompt user to choose device group
+        panoDG = None
+        if devType == 'pano':
+            panoDG = getDG(fwip, mainkey)
 
-    # Option for adding address object group
-    addGroupOption()
+        # Check to see if firewall is multi-vsys, return vsys number, or shared
+        fw_vsys = None
+        if devType == 'fw':
+            fw_vsys = check_vsys(fwip, mainkey)
 
-    # Push API calls
-    apiPush(fwip, mainkey, devType, panoDG)
+        # Check for duplicates between list provided and pano/fw, and remove from list if they exist
+        checkPanDups(fwip, mainkey, panoDG, fw_vsys)
+
+        # Option for adding address object group
+        addGroupOption()
+
+        # Push API calls
+        apiPush(fwip, mainkey, devType, panoDG, fw_vsys)
+
+        # Prompt to run again if CSV was used (the same Pano/FW and credentials will be used)
+        if len(sys.argv) == 2:
+            while True:
+                another_run = input('\n\nWould you like run the script against another CSV file? [Y/n]  ')
+                if another_run.lower() == 'y' or another_run == '':
+                    sys.argv[1] = input('\nEnter the name of your CSV file: ')
+                    addrObj_ip, addrObj_fqdn, addrObj_range, allObjNames, addrGroupName = [], [], [], [], None
+                    break
+                elif another_run.lower() == 'n':
+                    print('\n\n\nHave a fantastic day!!!\n\n\n')
+                    exit()
+                else:
+                    time.sleep(.75)
+                    print("\n\nThat wasn't an option, please try again with a 'y' or 'n'...")
+        else:
+            break
+    print('\n\n\nHave a fantastic day!!!\n\n\n')
 
 
 if __name__ == '__main__':
